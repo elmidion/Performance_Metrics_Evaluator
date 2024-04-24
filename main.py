@@ -121,7 +121,7 @@ if len(uploaded_files) == 2:
             current_datetime = datetime.now().strftime("%Y%m%d%H%M%S")
 
             output_file = Excel_Generator(results)
-            output_file_name = f"{os.path.splitext(uploaded_files[0].name)[0]}_#os.path.splitext(uploaded_files[1].name)[0]}_비교분석결과_{current_datetime}.xlsx"
+            output_file_name = f"{os.path.splitext(uploaded_files[0].name)[0]}_os.path.splitext(uploaded_files[1].name)[0]}_비교분석결과_{current_datetime}.xlsx"
 
             st.download_button(
                 label="Download Output Excel",
