@@ -112,8 +112,8 @@ if len(uploaded_files) == 2:
                 elif true_type == 'categorical':
                     if len(true_data) > 0 and len(pred_data) > 0 and len(true_data) == len(pred_data):
                         # Metrics 계산
-                        true_data.astype('str')
-                        pred_data.astype('str')
+                        true_data = true_data.astype('str')
+                        pred_data = pred_data.astype('str')
                         accuracy = accuracy_score(true_data, pred_data)
                         precision = precision_score(true_data, pred_data, average='macro', zero_division=0)
                         recall = recall_score(true_data, pred_data, average='macro', zero_division=0)
