@@ -32,16 +32,16 @@ def validate_and_transform_column(data, is_categorical):
 def calculate_icc(true_data, pred_data):
     # ICC 계산을 위해 데이터프레임을 생성합니다.
     icc_data = pd.DataFrame({
-        'True': true_data,
-        'Pred': pred_data,
-        'ID': range(len(true_data))
+        'Measurements': pd.concat([true_data, pred_data], ignore_index=True),  # 측정치
+        'ID': list(range(len(true_data))) + list(range(len(pred_data))),  # 각 측정치에 대한 고유 ID
+        'Rater': ['True'] * len(true_data) + ['Pred'] * len(pred_data)  # 평가자 구분
     })
 
     # ICC 계산
-    icc_result = pg.intraclass_corr(data=icc_data, targets='True', raters='Pred', ratings='absolute-single').round(3)
+    icc_result = pg.intraclass_corr(data=icc_data, targets='Measurements', raters='Rater', ratings='ID',
+                                    type='ICC1').round(3)  # ICC의 타입을 명확하게 지정
     icc_value = icc_result.at[0, 'ICC']  # 첫 번째 행의 ICC 값
     return icc_value
-
 
 # Streamlit 페이지 설정
 st.title('결과 비교 애플리케이션')
