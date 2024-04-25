@@ -120,10 +120,10 @@ if len(uploaded_files) == 2:
                         f1 = f1_score(true_data, pred_data, average='macro', zero_division=0)
                         results_list.append({
                             "Label Column": column,
-                            "Accuracy": f"{accuracy:.2f}",
-                            "Precision": f"{precision:.2f}",
-                            "Recall": f"{recall:.2f}",
-                            "F1 Score": f"{f1:.2f}"
+                            "Accuracy": f"{accuracy:.3f}",
+                            "Precision": f"{precision:.3f}",
+                            "Recall": f"{recall:.3f}",
+                            "F1 Score": f"{f1:.3f}"
                         })
                     else:
                         st.warning(f"Column '{column}'은(는) 빈 배열이거나 길이가 일치하지 않아 분류 메트릭을 계산할 수 없습니다.")
