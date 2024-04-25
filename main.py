@@ -39,7 +39,7 @@ def calculate_icc(true_data, pred_data):
 
     # ICC 계산
     icc_result = pg.intraclass_corr(data=icc_data, targets='Measurements', raters='Rater', ratings='ID',
-                                    type='ICC1').round(3)  # ICC의 타입을 명확하게 지정
+                                    icc='ICC1').round(3)  # ICC 유형 명확히 지정 ('ICC1', 'ICC2', 'ICC3' 등을 사용할 수 있음)
     icc_value = icc_result.at[0, 'ICC']  # 첫 번째 행의 ICC 값
     return icc_value
 
