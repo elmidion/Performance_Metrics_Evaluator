@@ -22,12 +22,29 @@ def infer_column_type(data):
     else:
         return 'unknown'
 
-def validate_and_transform_column(data, is_categorical):
+def validate_and_transform_column(true_data, pred_data, is_categorical):
     if is_categorical:
-        data = pd.Categorical(data).codes
-        return data[data != -1], 'categorical'
+        # Combine unique values from both dataframes
+        true_data = true_data.astype(str)
+        pred_data = pred_data.astype(str)
+
+        all_unique_values = pd.unique(pd.concat([true_data, pred_data], ignore_index=True))
+        print(all_unique_values)
+
+        # Create a categorical mapping based on combined unique values
+        cat_mapping = {val: idx for idx, val in enumerate(all_unique_values)}
+        
+        # Encode both dataframes using the same mapping
+        true_data_encoded = true_data.map(cat_mapping)
+        pred_data_encoded = pred_data.map(cat_mapping)
+        
+        # Remove any -1 values (not in the mapping)
+        true_data_encoded = true_data_encoded[true_data_encoded != -1]
+        pred_data_encoded = pred_data_encoded[pred_data_encoded != -1]
+        
+        return true_data_encoded, pred_data_encoded, 'categorical'
     else:
-        return data.astype(float).dropna(), 'continuous'
+        return true_data.astype(float), pred_data.astype(float), 'continuous'
 
 def calculate_icc(true_data, pred_data):
     # ICC 계산을 위해 데이터프레임을 생성합니다.
@@ -89,8 +106,7 @@ if len(uploaded_files) == 2:
 
         # 공통된 각 라벨 열에 대한 메트릭 계산
         for column in common_columns:
-            true_data, true_type = validate_and_transform_column(df_true[column], data_types[column])
-            pred_data, pred_type = validate_and_transform_column(df_pred[column], data_types[column])
+            true_data, pred_data, true_type = validate_and_transform_column(df_true[column], df_pred[column], data_types[column])
 
             if true_data is not None and pred_data is not None:
                 if true_type == 'continuous':
@@ -111,9 +127,19 @@ if len(uploaded_files) == 2:
                         st.warning(f"Column '{column}'은(는) 빈 배열이거나 길이가 일치하지 않아 MSE와 ICC를 계산할 수 없습니다.")
                 elif true_type == 'categorical':
                     if len(true_data) > 0 and len(pred_data) > 0 and len(true_data) == len(pred_data):
+   
                         # Metrics 계산
-                        true_data = true_data.astype('str')
-                        pred_data = pred_data.astype('str')
+                        # import numpy as np
+                        # # 일치하지 않는 행 예시 출력
+                        # mismatched_indices = np.where(true_data != pred_data)[0]
+                        # if len(mismatched_indices) > 0:
+                        #     print(f"\n{column}에서 일치하지 않는 행의 예시:")
+                        #     for idx in mismatched_indices:  # 최대 5개 행만 출력
+                        #         print(f"true_data[{idx}]: {true_data[idx]}, pred_data[{idx}]: {pred_data[idx]}")
+                        # else:
+                        #     print(f"\n{column}에서 모든 행이 일치합니다.")
+
+
                         accuracy = accuracy_score(true_data, pred_data)
                         precision = precision_score(true_data, pred_data, average='macro', zero_division=0)
                         recall = recall_score(true_data, pred_data, average='macro', zero_division=0)
@@ -124,7 +150,7 @@ if len(uploaded_files) == 2:
                             "Precision": f"{precision:.3f}",
                             "Recall": f"{recall:.3f}",
                             "F1 Score": f"{f1:.3f}"
-                        })
+                        })                        
                     else:
                         st.warning(f"Column '{column}'은(는) 빈 배열이거나 길이가 일치하지 않아 분류 메트릭을 계산할 수 없습니다.")
             else:
@@ -134,9 +160,9 @@ if len(uploaded_files) == 2:
         if results_list:
             results = pd.DataFrame(results_list)
             
-            # 'Label Column'을 기준으로 행 순서 정렬
-            results['sort_order'] = results['Label Column'].apply(lambda x: common_columns.index(x) if x in common_columns else len(common_columns))
-            results = results.sort_values('sort_order').drop('sort_order', axis=1)
+            # # 'Label Column'을 기준으로 행 순서 정렬
+            # results['sort_order'] = results['Label Column'].apply(lambda x: common_columns.index(x) if x in common_columns else len(common_columns))
+            # results = results.sort_values('sort_order').drop('sort_order', axis=1)
             
             st.table(results)
 
