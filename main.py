@@ -4,6 +4,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 import io
 import os
 from datetime import datetime
+import pingouin as pg
 
 def Excel_Generator(df):
     output = io.BytesIO()
@@ -27,6 +28,20 @@ def validate_and_transform_column(data, is_categorical):
         return data[data != -1], 'categorical'
     else:
         return data.astype(float).dropna(), 'continuous'
+
+def calculate_icc(true_data, pred_data):
+    # ICC 계산을 위해 데이터프레임을 생성합니다.
+    icc_data = pd.DataFrame({
+        'True': true_data,
+        'Pred': pred_data,
+        'ID': range(len(true_data))
+    })
+
+    # ICC 계산
+    icc_result = pg.intraclass_corr(data=icc_data, targets='True', raters='Pred', ratings='absolute-single').round(3)
+    icc_value = icc_result.at[0, 'ICC']  # 첫 번째 행의 ICC 값
+    return icc_value
+
 
 # Streamlit 페이지 설정
 st.title('결과 비교 애플리케이션')
@@ -87,8 +102,14 @@ if len(uploaded_files) == 2:
                             "Label Column": column,
                             "MSE": f"{mse:.2f}"
                         })
+                        # ICC 계산 추가
+                        icc = calculate_icc(true_data, pred_data)
+                        results_list.append({
+                            "Label Column": column,
+                            "ICC": f"{icc:.2f}"
+                        })
                     else:
-                        st.warning(f"Column '{column}'은(는) 빈 배열이거나 길이가 일치하지 않아 MSE를 계산할 수 없습니다.")
+                        st.warning(f"Column '{column}'은(는) 빈 배열이거나 길이가 일치하지 않아 MSE와 ICC를 계산할 수 없습니다.")
                 elif true_type == 'categorical':
                     if len(true_data) > 0 and len(pred_data) > 0 and len(true_data) == len(pred_data):
                         # Metrics 계산
