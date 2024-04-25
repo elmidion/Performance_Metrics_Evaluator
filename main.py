@@ -38,8 +38,7 @@ def calculate_icc(true_data, pred_data):
     })
 
     # ICC 계산
-    icc_result = pg.intraclass_corr(data=icc_data, targets='Measurements', raters='Rater', ratings='ID',
-                                    model='oneway').round(3)  # ICC 유형 명확히 지정 ('oneway', 'twoway' 등을 사용할 수 있음)
+    icc_result = pg.intraclass_corr(data=icc_data, targets='Measurements', raters='Rater', ratings='ID').round(3)
     icc_value = icc_result.at[0, 'ICC']  # 첫 번째 행의 ICC 값
     return icc_value
 
