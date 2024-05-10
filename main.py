@@ -6,6 +6,8 @@ import os
 from datetime import datetime
 import pingouin as pg
 from statsmodels.stats.proportion import proportion_confint
+from sklearn.utils import resample
+import numpy as np
 
 def Excel_Generator(df):
     output = io.BytesIO()
@@ -69,17 +71,23 @@ def calculate_metrics(true_data, pred_data):
     
     # 95% 신뢰구간 계산
     n_samples = len(true_data)
-    accuracy_ci = proportion_confint(int(accuracy * n_samples), n_samples, alpha=0.05, method='wilson')
-    precision_ci = proportion_confint(int(precision * n_samples), n_samples, alpha=0.05, method='wilson')
-    recall_ci = proportion_confint(int(recall * n_samples), n_samples, alpha=0.05, method='wilson')
-    f1_ci = proportion_confint(int(f1 * n_samples), n_samples, alpha=0.05, method='wilson')
-    
-    return {
-        "Accuracy": f"{accuracy:.3f}±{max(accuracy_ci[1]-accuracy, accuracy-accuracy_ci[0]):.3f}",
-        "Precision": f"{precision:.3f}±{max(precision_ci[1]-precision, precision-precision_ci[0]):.3f}",
-        "Recall": f"{recall:.3f}±{max(recall_ci[1]-recall, recall-recall_ci[0]):.3f}",
-        "F1 Score": f"{f1:.3f}±{max(f1_ci[1]-f1, f1-f1_ci[0]):.3f}"
+    metrics = {
+        'accuracy': accuracy,
+        'precision': precision,
+        'recall': recall,
+        'f1': f1
     }
+    
+    ci_results = {}
+    for metric_name, metric_value in metrics.items():
+        if metric_value == 1.0:
+            ci_results[metric_name] = f"{metric_value:.3f}±0.000"
+        else:
+            ci = proportion_confint(int(metric_value * n_samples), n_samples, alpha=0.05, method='wilson')
+            ci_results[metric_name] = f"{metric_value:.3f}±{max(metric_value-ci[0], ci[1]-metric_value):.3f}"
+    
+    return ci_results
+
 
 # Streamlit 페이지 설정
 st.title('결과 비교 애플리케이션')
