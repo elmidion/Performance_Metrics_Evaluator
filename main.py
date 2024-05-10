@@ -5,6 +5,7 @@ import io
 import os
 from datetime import datetime
 import pingouin as pg
+from statsmodels.stats.proportion import proportion_confint
 
 def Excel_Generator(df):
     output = io.BytesIO()
@@ -58,6 +59,27 @@ def calculate_icc(true_data, pred_data):
     icc_result = pg.intraclass_corr(data=icc_data, targets='Measurements', raters='Rater', ratings='ID', nan_policy='omit').round(3)
     icc_value = icc_result.at[0, 'ICC']  # 첫 번째 행의 ICC 값
     return icc_value
+
+
+def calculate_metrics(true_data, pred_data):
+    accuracy = accuracy_score(true_data, pred_data)
+    precision = precision_score(true_data, pred_data, average='macro', zero_division=0)
+    recall = recall_score(true_data, pred_data, average='macro', zero_division=0)
+    f1 = f1_score(true_data, pred_data, average='macro', zero_division=0)
+    
+    # 95% 신뢰구간 계산
+    n_samples = len(true_data)
+    accuracy_ci = proportion_confint(int(accuracy * n_samples), n_samples, alpha=0.05, method='wilson')
+    precision_ci = proportion_confint(int(precision * n_samples), n_samples, alpha=0.05, method='wilson')
+    recall_ci = proportion_confint(int(recall * n_samples), n_samples, alpha=0.05, method='wilson')
+    f1_ci = proportion_confint(int(f1 * n_samples), n_samples, alpha=0.05, method='wilson')
+    
+    return {
+        "Accuracy": f"{accuracy:.3f}±{max(accuracy_ci[1]-accuracy, accuracy-accuracy_ci[0]):.3f}",
+        "Precision": f"{precision:.3f}±{max(precision_ci[1]-precision, precision-precision_ci[0]):.3f}",
+        "Recall": f"{recall:.3f}±{max(recall_ci[1]-recall, recall-recall_ci[0]):.3f}",
+        "F1 Score": f"{f1:.3f}±{max(f1_ci[1]-f1, f1-f1_ci[0]):.3f}"
+    }
 
 # Streamlit 페이지 설정
 st.title('결과 비교 애플리케이션')
@@ -127,30 +149,11 @@ if len(uploaded_files) == 2:
                         st.warning(f"Column '{column}'은(는) 빈 배열이거나 길이가 일치하지 않아 MSE와 ICC를 계산할 수 없습니다.")
                 elif true_type == 'categorical':
                     if len(true_data) > 0 and len(pred_data) > 0 and len(true_data) == len(pred_data):
-   
-                        # Metrics 계산
-                        # import numpy as np
-                        # # 일치하지 않는 행 예시 출력
-                        # mismatched_indices = np.where(true_data != pred_data)[0]
-                        # if len(mismatched_indices) > 0:
-                        #     print(f"\n{column}에서 일치하지 않는 행의 예시:")
-                        #     for idx in mismatched_indices:  # 최대 5개 행만 출력
-                        #         print(f"true_data[{idx}]: {true_data[idx]}, pred_data[{idx}]: {pred_data[idx]}")
-                        # else:
-                        #     print(f"\n{column}에서 모든 행이 일치합니다.")
-
-
-                        accuracy = accuracy_score(true_data, pred_data)
-                        precision = precision_score(true_data, pred_data, average='macro', zero_division=0)
-                        recall = recall_score(true_data, pred_data, average='macro', zero_division=0)
-                        f1 = f1_score(true_data, pred_data, average='macro', zero_division=0)
+                        metrics = calculate_metrics(true_data, pred_data)
                         results_list.append({
                             "Label Column": column,
-                            "Accuracy": f"{accuracy:.3f}",
-                            "Precision": f"{precision:.3f}",
-                            "Recall": f"{recall:.3f}",
-                            "F1 Score": f"{f1:.3f}"
-                        })                        
+                            **metrics
+                        })
                     else:
                         st.warning(f"Column '{column}'은(는) 빈 배열이거나 길이가 일치하지 않아 분류 메트릭을 계산할 수 없습니다.")
             else:
