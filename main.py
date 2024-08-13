@@ -8,13 +8,47 @@ import pingouin as pg
 from statsmodels.stats.proportion import proportion_confint
 import numpy as np
 
-def Excel_Generator(df):
+def Excel_Generator(df, cross_tables):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Output')
+        df.to_excel(writer, index=False, sheet_name='Summary')
+        for column, (conf_matrix, results, labels) in cross_tables.items():
+            # Create a unique sheet name for each column (limited to 31 characters)
+            sheet_name = f"Sheet_{common_columns.index(column) + 1}"
+
+            # Write data to the sheet
+            worksheet = writer.book.create_sheet(sheet_name)
+            worksheet.cell(row=1, column=1).value = f"Cross Table for {column}"  # Add title to sheet
+
+            # Write the confusion matrix labels and values
+            conf_matrix_df = pd.DataFrame(conf_matrix, index=labels, columns=labels)
+            for idx, label in enumerate(conf_matrix_df.index, start=3):
+                worksheet.cell(row=idx, column=1).value = label  # Row labels
+            for idx, label in enumerate(conf_matrix_df.columns, start=2):
+                worksheet.cell(row=2, column=idx).value = label  # Column labels
+            
+            for r_idx, row in enumerate(conf_matrix_df.values, start=3):
+                for c_idx, value in enumerate(row, start=2):
+                    worksheet.cell(row=r_idx, column=c_idx).value = value
+            
+            # Write results (TP, FP, FN, TN, Precision, Recall, F1)
+            results_df = pd.DataFrame(results)
+            start_row = len(conf_matrix_df) + 6  # Leave some space after the confusion matrix
+            for idx, label in enumerate(results_df.index, start=start_row):
+                worksheet.cell(row=idx, column=1).value = label  # Row labels
+            for idx, label in enumerate(results_df.columns, start=2):
+                worksheet.cell(row=start_row - 1, column=idx).value = label  # Column labels
+            
+            for r_idx, row in enumerate(results_df.values, start=start_row):
+                for c_idx, value in enumerate(row, start=2):
+                    worksheet.cell(row=r_idx, column=c_idx).value = value
+
     output.seek(0)
     processed_data = output.getvalue()
     return processed_data
+
+
+
 
 def infer_column_type(data):
     if pd.api.types.is_numeric_dtype(data):
@@ -144,7 +178,7 @@ if len(uploaded_files) == 2:
             results = pd.DataFrame(results_list)
             st.table(results)
             current_datetime = datetime.now().strftime("%Y%m%d%H%M%S")
-            output_file = Excel_Generator(results)
+            output_file = Excel_Generator(results, cross_tables)
             output_file_name = f"{os.path.splitext(uploaded_files[0].name)[0]}_{os.path.splitext(uploaded_files[1].name)[0]}_비교분석결과_{current_datetime}.xlsx"
             st.download_button(
                 label="Download Output Excel",
