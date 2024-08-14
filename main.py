@@ -8,7 +8,7 @@ import pingouin as pg
 from statsmodels.stats.proportion import proportion_confint
 import numpy as np
 
-def Excel_Generator(df, cross_tables):
+def Excel_Generator(df, cross_tables, file_1_name, file_2_name):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Summary')
@@ -19,26 +19,31 @@ def Excel_Generator(df, cross_tables):
             # Write data to the sheet
             worksheet = writer.book.create_sheet(sheet_name)
             worksheet.cell(row=1, column=1).value = f"Cross Table for {column}"  # Add title to sheet
+            
+            # Add headers indicating the file sources for rows and columns
+            worksheet.cell(row=2, column=2).value = f"Columns: {file_2_name}"
+            worksheet.cell(row=3, column=1).value = f"Rows: {file_1_name}"
 
             # Write the confusion matrix labels and values
-            conf_matrix_df = pd.DataFrame(conf_matrix, index=labels, columns=labels)
-            for idx, label in enumerate(conf_matrix_df.index, start=3):
+            worksheet.cell(row=4, column=1).value = ""  # Empty cell for alignment
+            for idx, label in enumerate(labels, start=2):  # Adjust start index
+                worksheet.cell(row=4, column=idx).value = label  # Column labels
+
+            for idx, label in enumerate(labels, start=5):  # Adjust start index for row labels
                 worksheet.cell(row=idx, column=1).value = label  # Row labels
-            for idx, label in enumerate(conf_matrix_df.columns, start=2):
-                worksheet.cell(row=2, column=idx).value = label  # Column labels
             
-            for r_idx, row in enumerate(conf_matrix_df.values, start=3):
+            for r_idx, row in enumerate(conf_matrix, start=5):  # Adjust start row by +1
                 for c_idx, value in enumerate(row, start=2):
                     worksheet.cell(row=r_idx, column=c_idx).value = value
-            
+
             # Write results (TP, FP, FN, TN, Precision, Recall, F1)
             results_df = pd.DataFrame(results)
-            start_row = len(conf_matrix_df) + 6  # Leave some space after the confusion matrix
+            start_row = len(conf_matrix) + 7  # Leave some space after the confusion matrix
             for idx, label in enumerate(results_df.index, start=start_row):
                 worksheet.cell(row=idx, column=1).value = label  # Row labels
             for idx, label in enumerate(results_df.columns, start=2):
                 worksheet.cell(row=start_row - 1, column=idx).value = label  # Column labels
-            
+
             for r_idx, row in enumerate(results_df.values, start=start_row):
                 for c_idx, value in enumerate(row, start=2):
                     worksheet.cell(row=r_idx, column=c_idx).value = value
@@ -46,8 +51,6 @@ def Excel_Generator(df, cross_tables):
     output.seek(0)
     processed_data = output.getvalue()
     return processed_data
-
-
 
 
 def infer_column_type(data):
@@ -149,8 +152,16 @@ if len(uploaded_files) == 2:
         results_list = []
         cross_tables = {}
 
-        df_true = df1 if answer == uploaded_files[0].name else df2
-        df_pred = df2 if answer == uploaded_files[0].name else df1
+        if answer == uploaded_files[0].name:
+            df_true = df1    
+            df_pred = df2
+            True_data_name = uploaded_files[0].name
+            Pred_data_name = uploaded_files[1].name
+        else:
+            df_true = df2    
+            df_pred = df1
+            True_data_name = uploaded_files[1].name
+            Pred_data_name = uploaded_files[0].name
 
         for column in common_columns:
             true_data, pred_data, true_type, cat_mapping = validate_and_transform_column(df_true[column], df_pred[column], data_types[column])
@@ -178,7 +189,8 @@ if len(uploaded_files) == 2:
             results = pd.DataFrame(results_list)
             st.table(results)
             current_datetime = datetime.now().strftime("%Y%m%d%H%M%S")
-            output_file = Excel_Generator(results, cross_tables)
+            # output_file = Excel_Generator(results, cross_tables)
+            output_file = Excel_Generator(results, cross_tables, True_data_name, Pred_data_name)
             output_file_name = f"{os.path.splitext(uploaded_files[0].name)[0]}_{os.path.splitext(uploaded_files[1].name)[0]}_비교분석결과_{current_datetime}.xlsx"
             st.download_button(
                 label="Download Output Excel",
